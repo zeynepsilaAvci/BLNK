@@ -1,14 +1,67 @@
+import 'dart:convert';
+
+import 'package:deneme2/api_connection/api_connection.dart';
+import 'package:deneme2/fragments/dashboard_of_fragments.dart';
 import 'package:deneme2/users/authentication/sign_page.dart';
+import 'package:deneme2/userPreferences/user_preferences.dart';
+import '../model/user.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 
 
-class LoginPage extends StatelessWidget {
-  const LoginPage({super.key});
 
-  Future logIn() async{
+class LoginPage extends StatefulWidget
+{
+
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage>
+{
+  var formKey = GlobalKey<FormState>();
+  var emailController = TextEditingController();
+  var passwordController = TextEditingController();
+  var isObsecure = true.obs;
+
+
+  loginUserNow() async
+  {
+    try
+    {
+      var res = await http.post(
+        Uri.parse(API.login),
+        body: {
+          "user_email":emailController.text.trim(),
+          "user_password":passwordController.text.trim(),
+        },
+      );
+
+      if (res.statusCode == 200) {
+        var resBodyOfLogin = jsonDecode(res.body);
+        if (resBodyOfLogin['success'] == true) {
+          Fluttertoast.showToast(
+              msg: "Congratulations, you are logged-in successfully.");
+
+          User userInfo = User.fromJson(resBodyOfLogin["userData"]);
+
+          //save Userinfo to local storage
+          await RememberUserPrefs.saveRememberUser(userInfo);
+
+          Get.to(DashboardOfFragments());
+
+        } else {
+          Fluttertoast.showToast(msg: "Incorrect Credentials. \nPlease write correct password or email and Try Again.");
+        }
+      }
+    }
+    catch(errorMsg)
+    {
+      print("Error :: " + errorMsg.toString());
+
+    }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -46,21 +99,32 @@ class LoginPage extends StatelessWidget {
 
                 //email textfield
 
+
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      border: Border.all(color: Colors.white),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 10),
-                      child: TextField(
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          hintText: 'E-mail',
-                          prefixIcon: Icon(Icons.mail),
+                  child: Form(
+                    key: formKey,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        border: Border.all(color: Colors.white),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 10),
+                        child: TextFormField(
+                          controller: emailController,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter an email address.';
+                            }
+                            return null;
+                          },
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            hintText: 'E-mail',
+                            prefixIcon: Icon(Icons.mail),
+                          ),
                         ),
                       ),
                     ),
@@ -70,27 +134,39 @@ class LoginPage extends StatelessWidget {
                   height: 20,
                 ),
                 //password text field
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      border: Border.all(color: Colors.white),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 10),
-                      child: TextField(
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          hintText: 'Password',
-                          prefixIcon: Icon(Icons.lock),
+                Obx(
+                      ()=> Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        border: Border.all(color: Colors.white),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 10),
+                        child: TextFormField(
+                          controller: passwordController,
+                          obscureText: isObsecure.value,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter a password.';
+                            }
+                            return null;
+                          },
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            hintText: 'Password',
+                            prefixIcon: Icon(Icons.lock),
+                          ),
                         ),
                       ),
                     ),
                   ),
+
                 ),
+
+
                 SizedBox(
                   height: 30,
                 ),
@@ -100,7 +176,11 @@ class LoginPage extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 120.0),
                   child: GestureDetector(
-                    onTap: logIn,
+                    onTap: () {
+                      if (formKey.currentState!.validate()) {
+                        loginUserNow();
+                      }
+                    },
                     child: Container(
                       padding: EdgeInsets.symmetric(vertical: 15),
                       decoration: BoxDecoration(
@@ -111,14 +191,17 @@ class LoginPage extends StatelessWidget {
                         child: Text(
                           'Log In',
                           style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18),
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
+
+
                 SizedBox(
                   height: 15,
                 ),
